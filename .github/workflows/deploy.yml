@@ -18,15 +18,24 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # Ensure the EC2 host is added to known hosts to avoid SSH warnings
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Install Nginx and Setup Web Root Directory
+        run: |
+          # Update and install Nginx
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            sudo apt update
+            sudo apt install -y nginx
+            sudo mkdir -p /var/www/html
+            sudo chown www-data:www-data /var/www/html
+          EOF
 
       - name: Deploy index.html to EC2
         run: |
           # Copy index.html to EC2
           scp -o StrictHostKeyChecking=no index.html ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/index.html
           
-          # Move the file into Nginx web root and restart Nginx
+          # Move the file into the web root and restart Nginx
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             sudo mv /tmp/index.html /var/www/html/index.html
             sudo chown www-data:www-data /var/www/html/index.html
